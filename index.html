@@ -133,8 +133,6 @@ const dropZone = document.getElementById("dropZone");
 const themeToggle = document.getElementById("themeToggle");
 
 const blockedExtensions = ["exe","bat","cmd","msi","js","vbs","ps1","apk","dll","scr"];
-const MAX_SIZE = 4 * 1024 * 1024 * 1024;
-
 let currentMedia = null;
 
 /* ---------- THEME MEMORY ---------- */
@@ -163,11 +161,6 @@ function handleFile(file) {
 
     if (blockedExtensions.includes(ext)) {
         status.innerHTML = "<div class='warning'>Blocked unsafe file type.</div>";
-        return;
-    }
-
-    if (file.size > MAX_SIZE) {
-        status.innerHTML = "<div class='warning'>File too large.</div>";
         return;
     }
 
@@ -216,12 +209,7 @@ dropZone.addEventListener("drop", e => {
 /* ---------- FULLSCREEN TOGGLE ---------- */
 function toggleFullscreen() {
     if (!currentMedia || currentMedia.tagName !== "VIDEO") return;
-
-    if (!document.fullscreenElement) {
-        currentMedia.requestFullscreen();
-    } else {
-        document.exitFullscreen();
-    }
+    document.fullscreenElement ? document.exitFullscreen() : currentMedia.requestFullscreen();
 }
 
 /* ---------- KEYBOARD SHORTCUTS ---------- */
