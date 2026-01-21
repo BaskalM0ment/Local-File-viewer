@@ -6,40 +6,94 @@
 
 <style>
 :root {
-    --bg:#0e0e0e; --text:#fff; --panel:#1a1a1a;
-    --border:#555; --btn:#2e7dff; --btnh:#1f5fd1;
+    --bg:#0e0e0e;
+    --text:#ffffff;
+    --panel:#1a1a1a;
+    --border:#555;
+    --btn:#2e7dff;
+    --btnh:#1f5fd1;
 }
+
 body.light {
-    --bg:#f2f2f2; --text:#000; --panel:#fff;
-    --border:#aaa; --btn:#0066ff; --btnh:#004ccc;
+    --bg:#f2f2f2;
+    --text:#000000;
+    --panel:#ffffff;
+    --border:#aaa;
+    --btn:#0066ff;
+    --btnh:#004ccc;
 }
+
 body {
-    background:var(--bg); color:var(--text);
-    font-family:Arial,sans-serif; margin:0;
-    height:100vh; display:flex; flex-direction:column;
-    align-items:center; justify-content:center;
+    background:var(--bg);
+    color:var(--text);
+    font-family:Arial,sans-serif;
+    margin:0;
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
 }
+
+h1 { margin-bottom:10px; }
+p { margin-bottom:20px; opacity:0.8; }
+
 .drop-zone {
-    width:380px; padding:30px; border:3px dashed var(--border);
-    border-radius:14px; background:var(--panel);
-    text-align:center; cursor:pointer;
+    width:420px;
+    padding:35px;
+    border:3px dashed var(--border);
+    border-radius:16px;
+    background:var(--panel);
+    text-align:center;
+    cursor:pointer;
+    transition:0.2s;
 }
-.drop-zone.dragover { border-color:var(--btn); }
+
+.drop-zone.dragover {
+    border-color:var(--btn);
+    background:rgba(46,125,255,0.1);
+}
+
+/* IMPORTANT: fully hide file input */
+input[type="file"] {
+    display:none;
+}
+
 button {
-    margin-top:15px; background:var(--btn);
-    color:#fff; border:none; padding:10px 18px;
-    border-radius:8px; cursor:pointer;
+    margin-top:18px;
+    background:var(--btn);
+    color:white;
+    border:none;
+    padding:12px 22px;
+    border-radius:10px;
+    cursor:pointer;
+    font-size:1rem;
 }
+
 button:hover { background:var(--btnh); }
-video,audio,iframe,pre {
-    width:80%; max-width:900px;
-    margin-top:25px; background:#000;
+
+video,audio {
+    width:80%;
+    max-width:900px;
+    margin-top:30px;
+    background:black;
 }
-pre {
-    padding:20px; overflow:auto; background:var(--panel);
-}
+
 .hidden { display:none; }
-.toggle { position:absolute; top:20px; right:20px; }
+
+.toggle {
+    position:absolute;
+    top:20px;
+    right:20px;
+}
+
+.help {
+    position:absolute;
+    bottom:15px;
+    font-size:0.85rem;
+    opacity:0.7;
+    text-align:center;
+}
 </style>
 </head>
 <body>
@@ -52,8 +106,9 @@ pre {
 <p>Everything stays on your device. Nothing is uploaded.</p>
 
 <div class="drop-zone" id="dropZone">
-    Drag & Drop a file<br><br>
-    <button onclick="fileInput.click()">Choose File</button>
+    <strong>Drag & Drop a file</strong><br><br>
+    or<br><br>
+    <button id="chooseBtn">Choose File</button>
 </div>
 
 <input type="file" id="fileInput">
@@ -62,30 +117,46 @@ pre {
 
 <video id="video" controls class="hidden"></video>
 <audio id="audio" controls class="hidden"></audio>
-<iframe id="pdf" class="hidden" height="600"></iframe>
-<pre id="text" class="hidden"></pre>
+
+<div class="help">
+    Space: Play/Pause · F: Fullscreen · M: Mute · ← → Seek · ↑ ↓ Volume · L: Theme
+</div>
 
 <script>
 const fileInput = document.getElementById("fileInput");
+const chooseBtn = document.getElementById("chooseBtn");
 const dropZone = document.getElementById("dropZone");
 const status = document.getElementById("status");
 const video = document.getElementById("video");
 const audio = document.getElementById("audio");
-const pdf = document.getElementById("pdf");
-const text = document.getElementById("text");
 const themeToggle = document.getElementById("themeToggle");
 
 const blocked = ["exe","bat","cmd","msi","js","vbs","ps1","apk","dll","scr"];
+let currentMedia = null;
 
+/* ---------- THEME MEMORY ---------- */
+if (localStorage.theme === "light") {
+    document.body.classList.add("light");
+    themeToggle.textContent = "Dark Mode";
+}
+
+themeToggle.onclick = () => {
+    document.body.classList.toggle("light");
+    const isLight = document.body.classList.contains("light");
+    localStorage.theme = isLight ? "light" : "dark";
+    themeToggle.textContent = isLight ? "Dark Mode" : "Light Mode";
+};
+
+/* ---------- FILE HANDLING ---------- */
 function reset() {
     video.classList.add("hidden");
     audio.classList.add("hidden");
-    pdf.classList.add("hidden");
-    text.classList.add("hidden");
+    status.textContent = "";
 }
 
 function handleFile(file) {
     reset();
+
     const ext = file.name.split(".").pop().toLowerCase();
     if (blocked.includes(ext)) {
         status.textContent = "Blocked unsafe file type.";
@@ -95,58 +166,92 @@ function handleFile(file) {
     const url = URL.createObjectURL(file);
 
     if (file.type.startsWith("video/")) {
+        currentMedia = video;
         video.src = url;
         video.classList.remove("hidden");
         video.play();
     }
     else if (file.type.startsWith("audio/")) {
+        currentMedia = audio;
         audio.src = url;
         audio.classList.remove("hidden");
         audio.play();
     }
     else if (file.type === "application/pdf") {
-        pdf.src = url;
-        pdf.classList.remove("hidden");
-    }
-    else if (file.type.startsWith("text/")) {
-        file.text().then(t => {
-            text.textContent = t;
-            text.classList.remove("hidden");
-        });
+        // OPEN PDF CLEANLY IN NEW TAB
+        window.open(url, "_blank");
+        status.textContent = "PDF opened in new tab.";
+        return;
     }
     else {
+        // Other documents → download/open locally
         const a = document.createElement("a");
         a.href = url;
         a.download = file.name;
-        a.textContent = "Download document: " + file.name;
-        status.innerHTML = "";
-        status.appendChild(a);
+        a.click();
+        status.textContent = "Document opened locally.";
         return;
     }
 
     status.textContent = "Loaded locally. No upload occurred.";
 }
 
-fileInput.onchange = () => handleFile(fileInput.files[0]);
+/* ---------- BUTTON & DROP ---------- */
+chooseBtn.onclick = () => fileInput.click();
 
-dropZone.ondragover = e => { e.preventDefault(); dropZone.classList.add("dragover"); };
+fileInput.onchange = () => {
+    if (fileInput.files[0]) handleFile(fileInput.files[0]);
+};
+
+dropZone.ondragover = e => {
+    e.preventDefault();
+    dropZone.classList.add("dragover");
+};
+
 dropZone.ondragleave = () => dropZone.classList.remove("dragover");
+
 dropZone.ondrop = e => {
     e.preventDefault();
     dropZone.classList.remove("dragover");
-    handleFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
 };
 
-// Theme memory
-if (localStorage.theme === "light") {
-    document.body.classList.add("light");
-    themeToggle.textContent = "Dark Mode";
-}
-themeToggle.onclick = () => {
-    document.body.classList.toggle("light");
-    localStorage.theme = document.body.classList.contains("light") ? "light" : "dark";
-    themeToggle.textContent = localStorage.theme === "light" ? "Dark Mode" : "Light Mode";
-};
+/* ---------- KEYBOARD SHORTCUTS ---------- */
+document.addEventListener("keydown", e => {
+    if (!currentMedia) return;
+
+    switch (e.key.toLowerCase()) {
+        case " ":
+            e.preventDefault();
+            currentMedia.paused ? currentMedia.play() : currentMedia.pause();
+            break;
+        case "f":
+            if (currentMedia.tagName === "VIDEO") {
+                document.fullscreenElement
+                    ? document.exitFullscreen()
+                    : currentMedia.requestFullscreen();
+            }
+            break;
+        case "m":
+            currentMedia.muted = !currentMedia.muted;
+            break;
+        case "arrowright":
+            currentMedia.currentTime += 5;
+            break;
+        case "arrowleft":
+            currentMedia.currentTime -= 5;
+            break;
+        case "arrowup":
+            currentMedia.volume = Math.min(1, currentMedia.volume + 0.05);
+            break;
+        case "arrowdown":
+            currentMedia.volume = Math.max(0, currentMedia.volume - 0.05);
+            break;
+        case "l":
+            themeToggle.click();
+            break;
+    }
+});
 </script>
 
 </body>
