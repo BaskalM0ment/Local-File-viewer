@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Local Media Player (No Upload)</title>
+<style>
+    body {
+        background: #0e0e0e;
+        color: #fff;
+        font-family: Arial, sans-serif;
+        text-align: center;
+        padding: 30px;
+    }
+    input {
+        margin: 10px;
+    }
+    video, audio {
+        width: 80%;
+        margin-top: 20px;
+        background: #000;
+    }
+    .warning {
+        color: #ff5555;
+        margin-top: 15px;
+    }
+    .ok {
+        color: #55ff88;
+        margin-top: 15px;
+    }
+</style>
+</head>
+<body>
+
+<h1>Local Video & Audio Player</h1>
+<p>All files stay on your device. Nothing is uploaded.</p>
+
+<input type="file" id="fileInput" accept="video/*,audio/*">
+
+<div id="status"></div>
+
+<video id="videoPlayer" controls hidden></video>
+<audio id="audioPlayer" controls hidden></audio>
+
+<script>
+const fileInput = document.getElementById("fileInput");
+const video = document.getElementById("videoPlayer");
+const audio = document.getElementById("audioPlayer");
+const status = document.getElementById("status");
+
+// Block dangerous extensions (basic safety)
+const blockedExtensions = [
+    "exe","bat","cmd","msi","js","vbs","ps1","apk","dll","scr"
+];
+
+// Max file size: 4GB
+const MAX_SIZE = 4 * 1024 * 1024 * 1024;
+
+fileInput.addEventListener("change", () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    video.hidden = true;
+    audio.hidden = true;
+    status.innerHTML = "";
+
+    const ext = file.name.split(".").pop().toLowerCase();
+
+    if (blockedExtensions.includes(ext)) {
+        status.innerHTML = "<div class='warning'>Blocked: Executable or unsafe file type.</div>";
+        return;
+    }
+
+    if (file.size > MAX_SIZE) {
+        status.innerHTML = "<div class='warning'>File too large.</div>";
+        return;
+    }
+
+    // MIME type check
+    if (!file.type.startsWith("video/") && !file.type.startsWith("audio/")) {
+        status.innerHTML = "<div class='warning'>Unsupported file type.</div>";
+        return;
+    }
+
+    const url = URL.createObjectURL(file);
+
+    if (file.type.startsWith("video/")) {
+        video.src = url;
+        video.hidden = false;
+        video.load();
+        video.play();
+    } else {
+        audio.src = url;
+        audio.hidden = false;
+        audio.load();
+        audio.play();
+    }
+
+    status.innerHTML = "<div class='ok'>File loaded locally. No upload occurred.</div>";
+});
+</script>
+
+</body>
+</html>
