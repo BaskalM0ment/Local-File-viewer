@@ -2,100 +2,44 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Local Media Player (No Upload)</title>
+<title>Local Media & Document Viewer</title>
 
 <style>
-    :root {
-        --bg: #0e0e0e;
-        --text: #ffffff;
-        --panel: #1a1a1a;
-        --border: #555;
-        --button: #2e7dff;
-        --button-hover: #1f5fd1;
-    }
-
-    body.light {
-        --bg: #f2f2f2;
-        --text: #000000;
-        --panel: #ffffff;
-        --border: #aaa;
-        --button: #0066ff;
-        --button-hover: #004ccc;
-    }
-
-    body {
-        background: var(--bg);
-        color: var(--text);
-        font-family: Arial, sans-serif;
-        margin: 0;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        transition: background 0.3s, color 0.3s;
-    }
-
-    h1 { margin-bottom: 10px; }
-    p { margin-bottom: 20px; opacity: 0.8; }
-
-    .drop-zone {
-        width: 380px;
-        padding: 30px;
-        border: 3px dashed var(--border);
-        border-radius: 14px;
-        background: var(--panel);
-        text-align: center;
-        cursor: pointer;
-        transition: 0.2s;
-    }
-
-    .drop-zone.dragover {
-        border-color: var(--button);
-        background: rgba(46,125,255,0.1);
-    }
-
-    input[type="file"] { display: none; }
-
-    button {
-        margin-top: 15px;
-        background: var(--button);
-        color: white;
-        border: none;
-        padding: 10px 18px;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 1rem;
-    }
-
-    button:hover {
-        background: var(--button-hover);
-    }
-
-    video, audio {
-        width: 80%;
-        max-width: 900px;
-        margin-top: 30px;
-        background: black;
-    }
-
-    #status { margin-top: 15px; }
-    .warning { color: #ff5555; }
-    .ok { color: #55ff88; }
-
-    .toggle {
-        position: absolute;
-        top: 20px;
-        right: 20px;
-    }
-
-    .help {
-        position: absolute;
-        bottom: 15px;
-        font-size: 0.85rem;
-        opacity: 0.7;
-        text-align: center;
-    }
+:root {
+    --bg:#0e0e0e; --text:#fff; --panel:#1a1a1a;
+    --border:#555; --btn:#2e7dff; --btnh:#1f5fd1;
+}
+body.light {
+    --bg:#f2f2f2; --text:#000; --panel:#fff;
+    --border:#aaa; --btn:#0066ff; --btnh:#004ccc;
+}
+body {
+    background:var(--bg); color:var(--text);
+    font-family:Arial,sans-serif; margin:0;
+    height:100vh; display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+}
+.drop-zone {
+    width:380px; padding:30px; border:3px dashed var(--border);
+    border-radius:14px; background:var(--panel);
+    text-align:center; cursor:pointer;
+}
+.drop-zone.dragover { border-color:var(--btn); }
+button {
+    margin-top:15px; background:var(--btn);
+    color:#fff; border:none; padding:10px 18px;
+    border-radius:8px; cursor:pointer;
+}
+button:hover { background:var(--btnh); }
+video,audio,iframe,pre {
+    width:80%; max-width:900px;
+    margin-top:25px; background:#000;
+}
+pre {
+    padding:20px; overflow:auto; background:var(--panel);
+}
+.hidden { display:none; }
+.toggle { position:absolute; top:20px; right:20px; }
 </style>
 </head>
 <body>
@@ -104,146 +48,105 @@
     <button id="themeToggle">Light Mode</button>
 </div>
 
-<h1>Local Video & Audio Player</h1>
-<p>Drag & drop or select a file. Everything stays on your device.</p>
+<h1>Local Media & Document Viewer</h1>
+<p>Everything stays on your device. Nothing is uploaded.</p>
 
 <div class="drop-zone" id="dropZone">
-    <strong>Drag & Drop Media Here</strong><br><br>
-    or<br><br>
+    Drag & Drop a file<br><br>
     <button onclick="fileInput.click()">Choose File</button>
 </div>
 
-<input type="file" id="fileInput" accept="video/*,audio/*">
+<input type="file" id="fileInput">
 
 <div id="status"></div>
 
-<video id="videoPlayer" controls hidden></video>
-<audio id="audioPlayer" controls hidden></audio>
-
-<div class="help">
-    Space: Play/Pause · F: Fullscreen · M: Mute · ← → Seek · ↑ ↓ Volume · L: Theme
-</div>
+<video id="video" controls class="hidden"></video>
+<audio id="audio" controls class="hidden"></audio>
+<iframe id="pdf" class="hidden" height="600"></iframe>
+<pre id="text" class="hidden"></pre>
 
 <script>
 const fileInput = document.getElementById("fileInput");
-const video = document.getElementById("videoPlayer");
-const audio = document.getElementById("audioPlayer");
-const status = document.getElementById("status");
 const dropZone = document.getElementById("dropZone");
+const status = document.getElementById("status");
+const video = document.getElementById("video");
+const audio = document.getElementById("audio");
+const pdf = document.getElementById("pdf");
+const text = document.getElementById("text");
 const themeToggle = document.getElementById("themeToggle");
 
-const blockedExtensions = ["exe","bat","cmd","msi","js","vbs","ps1","apk","dll","scr"];
-let currentMedia = null;
+const blocked = ["exe","bat","cmd","msi","js","vbs","ps1","apk","dll","scr"];
 
-/* ---------- THEME MEMORY ---------- */
-const savedTheme = localStorage.getItem("theme");
-if (savedTheme === "light") {
-    document.body.classList.add("light");
-    themeToggle.textContent = "Dark Mode";
+function reset() {
+    video.classList.add("hidden");
+    audio.classList.add("hidden");
+    pdf.classList.add("hidden");
+    text.classList.add("hidden");
 }
 
-function toggleTheme() {
-    document.body.classList.toggle("light");
-    const isLight = document.body.classList.contains("light");
-    localStorage.setItem("theme", isLight ? "light" : "dark");
-    themeToggle.textContent = isLight ? "Dark Mode" : "Light Mode";
-}
-
-themeToggle.addEventListener("click", toggleTheme);
-
-/* ---------- FILE HANDLING ---------- */
 function handleFile(file) {
-    video.hidden = true;
-    audio.hidden = true;
-    status.innerHTML = "";
-
+    reset();
     const ext = file.name.split(".").pop().toLowerCase();
-
-    if (blockedExtensions.includes(ext)) {
-        status.innerHTML = "<div class='warning'>Blocked unsafe file type.</div>";
-        return;
-    }
-
-    if (!file.type.startsWith("video/") && !file.type.startsWith("audio/")) {
-        status.innerHTML = "<div class='warning'>Unsupported file type.</div>";
+    if (blocked.includes(ext)) {
+        status.textContent = "Blocked unsafe file type.";
         return;
     }
 
     const url = URL.createObjectURL(file);
 
     if (file.type.startsWith("video/")) {
-        currentMedia = video;
         video.src = url;
-        video.hidden = false;
+        video.classList.remove("hidden");
         video.play();
-    } else {
-        currentMedia = audio;
+    }
+    else if (file.type.startsWith("audio/")) {
         audio.src = url;
-        audio.hidden = false;
+        audio.classList.remove("hidden");
         audio.play();
     }
-
-    status.innerHTML = "<div class='ok'>Loaded locally. No upload occurred.</div>";
-}
-
-/* ---------- INPUT & DROP ---------- */
-fileInput.addEventListener("change", () => {
-    if (fileInput.files[0]) handleFile(fileInput.files[0]);
-});
-
-dropZone.addEventListener("dragover", e => {
-    e.preventDefault();
-    dropZone.classList.add("dragover");
-});
-
-dropZone.addEventListener("dragleave", () => {
-    dropZone.classList.remove("dragover");
-});
-
-dropZone.addEventListener("drop", e => {
-    e.preventDefault();
-    dropZone.classList.remove("dragover");
-    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
-});
-
-/* ---------- FULLSCREEN TOGGLE ---------- */
-function toggleFullscreen() {
-    if (!currentMedia || currentMedia.tagName !== "VIDEO") return;
-    document.fullscreenElement ? document.exitFullscreen() : currentMedia.requestFullscreen();
-}
-
-/* ---------- KEYBOARD SHORTCUTS ---------- */
-document.addEventListener("keydown", e => {
-    if (!currentMedia) return;
-
-    switch (e.key.toLowerCase()) {
-        case " ":
-            e.preventDefault();
-            currentMedia.paused ? currentMedia.play() : currentMedia.pause();
-            break;
-        case "f":
-            toggleFullscreen();
-            break;
-        case "m":
-            currentMedia.muted = !currentMedia.muted;
-            break;
-        case "arrowright":
-            currentMedia.currentTime += 5;
-            break;
-        case "arrowleft":
-            currentMedia.currentTime -= 5;
-            break;
-        case "arrowup":
-            currentMedia.volume = Math.min(1, currentMedia.volume + 0.05);
-            break;
-        case "arrowdown":
-            currentMedia.volume = Math.max(0, currentMedia.volume - 0.05);
-            break;
-        case "l":
-            toggleTheme();
-            break;
+    else if (file.type === "application/pdf") {
+        pdf.src = url;
+        pdf.classList.remove("hidden");
     }
-});
+    else if (file.type.startsWith("text/")) {
+        file.text().then(t => {
+            text.textContent = t;
+            text.classList.remove("hidden");
+        });
+    }
+    else {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = file.name;
+        a.textContent = "Download document: " + file.name;
+        status.innerHTML = "";
+        status.appendChild(a);
+        return;
+    }
+
+    status.textContent = "Loaded locally. No upload occurred.";
+}
+
+fileInput.onchange = () => handleFile(fileInput.files[0]);
+
+dropZone.ondragover = e => { e.preventDefault(); dropZone.classList.add("dragover"); };
+dropZone.ondragleave = () => dropZone.classList.remove("dragover");
+dropZone.ondrop = e => {
+    e.preventDefault();
+    dropZone.classList.remove("dragover");
+    handleFile(e.dataTransfer.files[0]);
+};
+
+// Theme memory
+if (localStorage.theme === "light") {
+    document.body.classList.add("light");
+    themeToggle.textContent = "Dark Mode";
+}
+themeToggle.onclick = () => {
+    document.body.classList.toggle("light");
+    localStorage.theme = document.body.classList.contains("light") ? "light" : "dark";
+    themeToggle.textContent = localStorage.theme === "light" ? "Dark Mode" : "Light Mode";
+};
 </script>
 
 </body>
