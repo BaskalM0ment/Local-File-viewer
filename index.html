@@ -94,6 +94,7 @@
         bottom: 15px;
         font-size: 0.85rem;
         opacity: 0.7;
+        text-align: center;
     }
 </style>
 </head>
@@ -212,6 +213,17 @@ dropZone.addEventListener("drop", e => {
     if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
 });
 
+/* ---------- FULLSCREEN TOGGLE ---------- */
+function toggleFullscreen() {
+    if (!currentMedia || currentMedia.tagName !== "VIDEO") return;
+
+    if (!document.fullscreenElement) {
+        currentMedia.requestFullscreen();
+    } else {
+        document.exitFullscreen();
+    }
+}
+
 /* ---------- KEYBOARD SHORTCUTS ---------- */
 document.addEventListener("keydown", e => {
     if (!currentMedia) return;
@@ -222,7 +234,7 @@ document.addEventListener("keydown", e => {
             currentMedia.paused ? currentMedia.play() : currentMedia.pause();
             break;
         case "f":
-            if (currentMedia.requestFullscreen) currentMedia.requestFullscreen();
+            toggleFullscreen();
             break;
         case "m":
             currentMedia.muted = !currentMedia.muted;
